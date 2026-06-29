@@ -1,0 +1,225 @@
+import { cn } from '@/utils'
+import { forwardRef } from 'react'
+
+// ─── Button ───────────────────────────────────────────────────────────────────
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline'
+  size?: 'sm' | 'md' | 'lg' | 'icon'
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'secondary', size = 'md', children, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={cn(
+          'inline-flex items-center justify-center gap-1.5 font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] disabled:opacity-50 disabled:pointer-events-none',
+          {
+            'bg-[#2563EB] text-white hover:bg-[#1D4ED8]': variant === 'primary',
+            'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]': variant === 'secondary',
+            'text-[#374151] hover:bg-[#F3F4F6]': variant === 'ghost',
+            'bg-red-600 text-white hover:bg-red-700': variant === 'destructive',
+            'border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]': variant === 'outline',
+          },
+          {
+            'h-7 px-2.5 text-xs': size === 'sm',
+            'h-9 px-3.5 text-sm': size === 'md',
+            'h-11 px-5 text-base': size === 'lg',
+            'h-8 w-8 p-0': size === 'icon',
+          },
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </button>
+    )
+  }
+)
+Button.displayName = 'Button'
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+
+interface BadgeProps {
+  children: React.ReactNode
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline'
+  className?: string
+}
+
+export function Badge({ children, variant = 'default', className }: BadgeProps) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
+        {
+          'bg-gray-100 text-gray-700': variant === 'default',
+          'bg-green-50 text-green-700': variant === 'success',
+          'bg-orange-50 text-orange-700': variant === 'warning',
+          'bg-red-50 text-red-700': variant === 'error',
+          'bg-blue-50 text-blue-700': variant === 'info',
+          'border border-[#E5E7EB] text-[#6B7280]': variant === 'outline',
+        },
+        className
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+
+interface CardProps {
+  children: React.ReactNode
+  className?: string
+  padding?: 'none' | 'sm' | 'md' | 'lg'
+}
+
+export function Card({ children, className, padding = 'md' }: CardProps) {
+  return (
+    <div
+      className={cn(
+        'bg-white border border-[#E5E7EB] rounded-lg',
+        {
+          'p-0': padding === 'none',
+          'p-3': padding === 'sm',
+          'p-4': padding === 'md',
+          'p-6': padding === 'lg',
+        },
+        className
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+// ─── Status Dot ───────────────────────────────────────────────────────────────
+
+interface StatusDotProps {
+  status: 'online' | 'warning' | 'error' | 'offline' | 'unknown'
+  size?: 'sm' | 'md'
+  pulse?: boolean
+}
+
+export function StatusDot({ status, size = 'sm', pulse = false }: StatusDotProps) {
+  const colors = {
+    online: 'bg-green-500',
+    warning: 'bg-orange-500',
+    error: 'bg-red-500',
+    offline: 'bg-gray-400',
+    unknown: 'bg-gray-300',
+  }
+
+  const sizes = {
+    sm: 'w-2 h-2',
+    md: 'w-2.5 h-2.5',
+  }
+
+  return (
+    <span className="relative inline-flex">
+      {pulse && status === 'online' && (
+        <span
+          className={cn('absolute inline-flex rounded-full opacity-75 animate-ping', colors[status], sizes[size])}
+        />
+      )}
+      <span className={cn('relative inline-flex rounded-full', colors[status], sizes[size])} />
+    </span>
+  )
+}
+
+// ─── Metric Card ──────────────────────────────────────────────────────────────
+
+interface MetricCardProps {
+  label: string
+  value: string | number
+  unit?: string
+  trend?: 'up' | 'down' | 'neutral'
+  trendValue?: string
+  icon?: React.ReactNode
+  className?: string
+}
+
+export function MetricCard({ label, value, unit, trend, trendValue, icon, className }: MetricCardProps) {
+  return (
+    <Card className={cn('flex flex-col gap-2', className)}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-[#6B7280] font-medium uppercase tracking-wide">{label}</span>
+        {icon && <span className="text-[#9CA3AF]">{icon}</span>}
+      </div>
+      <div className="flex items-end gap-1.5">
+        <span className="text-2xl font-semibold text-[#111827] font-tabular-nums leading-none">
+          {value}
+        </span>
+        {unit && <span className="text-sm text-[#6B7280] mb-0.5">{unit}</span>}
+      </div>
+      {trendValue && (
+        <span
+          className={cn('text-xs font-medium', {
+            'text-red-600': trend === 'up',
+            'text-green-600': trend === 'down',
+            'text-[#6B7280]': trend === 'neutral',
+          })}
+        >
+          {trendValue}
+        </span>
+      )}
+    </Card>
+  )
+}
+
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+interface SectionHeaderProps {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  className?: string
+}
+
+export function SectionHeader({ title, description, action, className }: SectionHeaderProps) {
+  return (
+    <div className={cn('flex items-start justify-between gap-4', className)}>
+      <div>
+        <h2 className="text-base font-semibold text-[#111827]">{title}</h2>
+        {description && (
+          <p className="text-sm text-[#6B7280] mt-0.5">{description}</p>
+        )}
+      </div>
+      {action && <div className="flex-shrink-0">{action}</div>}
+    </div>
+  )
+}
+
+// ─── Divider ─────────────────────────────────────────────────────────────────
+
+export function Divider({ className }: { className?: string }) {
+  return <div className={cn('border-t border-[#E5E7EB]', className)} />
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+interface EmptyStateProps {
+  icon?: React.ReactNode
+  title: string
+  description?: string
+  action?: React.ReactNode
+}
+
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+      {icon && <div className="mb-4 text-[#D1D5DB]">{icon}</div>}
+      <h3 className="text-sm font-semibold text-[#111827] mb-1">{title}</h3>
+      {description && <p className="text-sm text-[#6B7280] max-w-sm">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  )
+}
+
+// ─── Toaster (minimal) ───────────────────────────────────────────────────────
+
+export function Toaster() {
+  return null // Placeholder — integrate with sonner or radix toast
+}

@@ -1,0 +1,157 @@
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import { formatDistanceToNow, format, parseISO } from 'date-fns'
+import type { NodeStatus, LogLevel, AlertSeverity } from '@/types'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+// ─── Formatting ───────────────────────────────────────────────────────────────
+
+export function formatBytes(bytes: number, decimals = 1): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`
+}
+
+export function formatBytesPerSec(bps: number): string {
+  return `${formatBytes(bps)}/s`
+}
+
+export function formatLatency(ms: number): string {
+  if (ms < 1) return `${(ms * 1000).toFixed(0)}μs`
+  if (ms < 1000) return `${ms.toFixed(1)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
+export function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${Math.floor(seconds)}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`
+  if (seconds < 86400) {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    return `${h}h ${m}m`
+  }
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  return `${d}d ${h}h`
+}
+
+export function formatPercent(value: number, decimals = 1): string {
+  return `${value.toFixed(decimals)}%`
+}
+
+export function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return n.toFixed(0)
+}
+
+export function formatTimestamp(iso: string): string {
+  try {
+    return format(parseISO(iso), 'HH:mm:ss.SSS')
+  } catch {
+    return iso
+  }
+}
+
+export function formatRelativeTime(iso: string): string {
+  try {
+    return formatDistanceToNow(parseISO(iso), { addSuffix: true })
+  } catch {
+    return iso
+  }
+}
+
+export function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+// ─── Status Helpers ───────────────────────────────────────────────────────────
+
+export function getStatusColor(status: NodeStatus): string {
+  switch (status) {
+    case 'online': return '#16A34A'
+    case 'warning': return '#D97706'
+    case 'error': return '#DC2626'
+    case 'offline': return '#6B7280'
+    default: return '#9CA3AF'
+  }
+}
+
+export function getStatusLabel(status: NodeStatus): string {
+  switch (status) {
+    case 'online': return 'Online'
+    case 'warning': return 'Warning'
+    case 'error': return 'Error'
+    case 'offline': return 'Offline'
+    default: return 'Unknown'
+  }
+}
+
+export function getLogLevelColor(level: LogLevel): string {
+  switch (level) {
+    case 'debug': return '#6B7280'
+    case 'info': return '#2563EB'
+    case 'warning': return '#D97706'
+    case 'error': return '#DC2626'
+    case 'fatal': return '#7C3AED'
+    default: return '#6B7280'
+  }
+}
+
+export function getSeverityColor(severity: AlertSeverity): string {
+  switch (severity) {
+    case 'low': return '#2563EB'
+    case 'medium': return '#D97706'
+    case 'high': return '#DC2626'
+    case 'critical': return '#7C3AED'
+    default: return '#6B7280'
+  }
+}
+
+// ─── Metric Thresholds ────────────────────────────────────────────────────────
+
+export function getMetricStatus(metric: string, value: number): NodeStatus {
+  switch (metric) {
+    case 'cpu':
+      if (value > 90) return 'error'
+      if (value > 75) return 'warning'
+      return 'online'
+    case 'memory':
+      if (value > 95) return 'error'
+      if (value > 80) return 'warning'
+      return 'online'
+    case 'latency':
+      if (value > 1000) return 'error'
+      if (value > 500) return 'warning'
+      return 'online'
+    default:
+      return 'online'
+  }
+}
+
+// ─── ID generation ────────────────────────────────────────────────────────────
+
+export function generateId(): string {
+  return Math.random().toString(36).slice(2, 11)
+}
+
+// ─── Array utils ──────────────────────────────────────────────────────────────
+
+export function chunk<T>(array: T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    array.slice(i * size, i * size + size)
+  )
+}
+
+export function last<T>(array: T[]): T | undefined {
+  return array[array.length - 1]
+}

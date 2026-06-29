@@ -1,0 +1,88 @@
+'use client'
+
+import { memo } from 'react'
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
+  type EdgeProps,
+} from 'reactflow'
+import type { TelemetryEdge } from '@/types'
+
+export const AnimatedEdge = memo(function AnimatedEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  selected,
+  style,
+}: EdgeProps<TelemetryEdge>) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 8,
+  })
+
+  const isActive = data?.status === 'active'
+  const isError = data?.status === 'error'
+  const packetRate = data?.packetRate ?? 0
+
+  // Animation speed based on packet rate
+  const duration = Math.max(0.8, 3 - (packetRate / 200))
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          ...style,
+          strokeDasharray: isActive ? '6 3' : undefined,
+          animation: isActive ? `flowDash ${duration}s linear infinite` : undefined,
+        }}
+      />
+
+      {/* Packet dot animation */}
+      {isActive && (
+        <circle r="3" fill={isError ? '#DC2626' : '#2563EB'} opacity="0.8">
+          <animateMotion
+            dur={`${duration}s`}
+            repeatCount="indefinite"
+            path={edgePath}
+          />
+        </circle>
+      )}
+
+      {/* Protocol label */}
+      {selected && data?.protocol && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'all',
+            }}
+            className="bg-white border border-[#E5E7EB] rounded-md px-1.5 py-0.5 text-[10px] text-[#6B7280] shadow-sm font-medium nodrag nopan"
+          >
+            {data.protocol}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+
+      <style>{`
+        @keyframes flowDash {
+          from { stroke-dashoffset: 0; }
+          to { stroke-dashoffset: -18; }
+        }
+      `}</style>
+    </>
+  )
+})

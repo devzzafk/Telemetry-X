@@ -1,0 +1,108 @@
+'use client'
+
+import { useMemo } from 'react'
+import { Cpu, MemoryStick, Activity, Wifi, AlertTriangle, Server, Zap } from 'lucide-react'
+import { useTelemetryStore } from '@/store'
+import { formatLatency, formatNumber } from '@/utils'
+import { cn } from '@/utils'
+
+interface StatProps {
+  label: string
+  value: string
+  icon: React.ElementType
+  status?: 'ok' | 'warning' | 'error'
+}
+
+function Stat({ label, value, icon: Icon, status = 'ok' }: StatProps) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-2.5 border-r border-[#E5E7EB] last:border-r-0">
+      <div
+        className={cn(
+          'w-5 h-5 rounded flex items-center justify-center flex-shrink-0',
+          status === 'error' ? 'bg-red-50' : status === 'warning' ? 'bg-orange-50' : 'bg-[#F9FAFB]'
+        )}
+      >
+        <Icon
+          className={cn(
+            'w-3 h-3',
+            status === 'error' ? 'text-red-600' : status === 'warning' ? 'text-orange-600' : 'text-[#6B7280]'
+          )}
+        />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] text-[#9CA3AF] uppercase tracking-wide leading-none mb-0.5">{label}</span>
+        <span className={cn(
+          'text-xs font-semibold font-tabular-nums leading-none',
+          status === 'error' ? 'text-red-600' : status === 'warning' ? 'text-orange-600' : 'text-[#111827]'
+        )}>
+          {value}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+export function LiveMetricsBar() {
+  const { nodes, alerts } = useTelemetryStore()
+
+  const metrics = useMemo(() => {
+    if (nodes.length === 0) return null
+
+    const onlineNodes = nodes.filter((n) => n.status === 'online' || n.status === 'warning')
+    const avgCpu = onlineNodes.reduce((s, n) => s + n.metrics.cpu, 0) / (onlineNodes.length || 1)
+    const avgMem = onlineNodes.reduce((s, n) => s + n.metrics.memory, 0) / (onlineNodes.length || 1)
+    const avgLatency = onlineNodes.reduce((s, n) => s + n.metrics.latency, 0) / (onlineNodes.length || 1)
+    const totalPackets = nodes.reduce((s, n) => s + n.metrics.packetRate, 0)
+    const totalErrors = nodes.reduce((s, n) => s + n.metrics.errorCount, 0)
+    const activeAlerts = alerts.filter((a) => a.status === 'active').length
+
+    return { avgCpu, avgMem, avgLatency, totalPackets, totalErrors, activeAlerts }
+  }, [nodes, alerts])
+
+  if (!metrics) return null
+
+  return (
+    <div className="flex items-center bg-white border-b border-[#E5E7EB] overflow-x-auto flex-shrink-0">
+      <Stat
+        label="Nodes"
+        value={`${nodes.filter((n) => n.status !== 'offline').length}/${nodes.length}`}
+        icon={Server}
+      />
+      <Stat
+        label="Avg CPU"
+        value={`${metrics.avgCpu.toFixed(1)}%`}
+        icon={Cpu}
+        status={metrics.avgCpu > 85 ? 'error' : metrics.avgCpu > 70 ? 'warning' : 'ok'}
+      />
+      <Stat
+        label="Avg Memory"
+        value={`${metrics.avgMem.toFixed(1)}%`}
+        icon={MemoryStick}
+        status={metrics.avgMem > 90 ? 'error' : metrics.avgMem > 75 ? 'warning' : 'ok'}
+      />
+      <Stat
+        label="Avg Latency"
+        value={formatLatency(metrics.avgLatency)}
+        icon={Zap}
+        status={metrics.avgLatency > 500 ? 'error' : metrics.avgLatency > 200 ? 'warning' : 'ok'}
+      />
+      <Stat
+        label="Packet Rate"
+        value={`${formatNumber(metrics.totalPackets)}/s`}
+        icon={Activity}
+      />
+      <Stat
+        label="Errors"
+        value={String(metrics.totalErrors)}
+        icon={AlertTriangle}
+        status={metrics.totalErrors > 10 ? 'error' : metrics.totalErrors > 0 ? 'warning' : 'ok'}
+      />
+      <Stat
+        label="Active Alerts"
+        value={String(metrics.activeAlerts)}
+        icon={Wifi}
+        status={metrics.activeAlerts > 0 ? 'warning' : 'ok'}
+      />
+    </div>
+  )
+}

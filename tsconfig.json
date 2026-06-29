@@ -1,0 +1,80 @@
+'use client'
+
+import { useState } from 'react'
+import { TelemetryGraph } from './TelemetryGraph'
+import { NodeInspector } from '../inspector/NodeInspector'
+import { LiveMetricsBar } from './LiveMetricsBar'
+import { LogPanel } from '../logs/LogPanel'
+import { ReplayTimeline } from '../replay/ReplayTimeline'
+import { useAppSettingsStore } from '@/store'
+import { cn } from '@/utils'
+
+type PanelTab = 'logs' | 'events'
+
+export function DashboardView() {
+  const { inspectorOpen, selectedNodeId } = useAppSettingsStore()
+  const [activeTab, setActiveTab] = useState<PanelTab>('logs')
+  const [logPanelHeight, setLogPanelHeight] = useState(240)
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Live metrics strip */}
+      <LiveMetricsBar />
+
+      {/* Main workspace */}
+      <div className="flex flex-1 min-h-0">
+        {/* Graph canvas */}
+        <div
+          className={cn(
+            'flex flex-col flex-1 min-w-0 transition-all duration-200',
+            inspectorOpen && selectedNodeId ? 'mr-[320px]' : ''
+          )}
+        >
+          {/* Telemetry graph */}
+          <div
+            className="flex-1"
+            style={{ height: `calc(100% - ${logPanelHeight}px - 80px)` }}
+          >
+            <TelemetryGraph />
+          </div>
+
+          {/* Log panel */}
+          <div
+            className="border-t border-[#E5E7EB] bg-white"
+            style={{ height: logPanelHeight }}
+          >
+            <div className="flex items-center border-b border-[#E5E7EB] px-4 h-9">
+              <div className="flex gap-4">
+                {(['logs', 'events'] as PanelTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      'text-xs font-medium capitalize pb-2 pt-1 border-b-2 -mb-[1px] transition-colors',
+                      activeTab === tab
+                        ? 'border-[#2563EB] text-[#2563EB]'
+                        : 'border-transparent text-[#6B7280] hover:text-[#374151]'
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <LogPanel height={logPanelHeight - 36} />
+          </div>
+
+          {/* Replay timeline */}
+          <ReplayTimeline />
+        </div>
+
+        {/* Inspector sidebar */}
+        {inspectorOpen && selectedNodeId && (
+          <div className="fixed right-0 top-[52px] bottom-0 w-[320px] border-l border-[#E5E7EB] bg-white overflow-hidden z-20">
+            <NodeInspector nodeId={selectedNodeId} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

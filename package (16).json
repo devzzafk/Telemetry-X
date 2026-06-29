@@ -1,0 +1,215 @@
+import { create } from 'zustand'
+import { devtools, persist } from 'zustand/middleware'
+import type {
+  TelemetryNode,
+  TelemetryEdge,
+  LogEntry,
+  Alert,
+  Project,
+  ReplayState,
+  AppSettings,
+  TelemetryEvent,
+} from '@/types'
+
+// ─── Telemetry Store ──────────────────────────────────────────────────────────
+
+interface TelemetryStore {
+  nodes: TelemetryNode[]
+  edges: TelemetryEdge[]
+  logs: LogEntry[]
+  events: TelemetryEvent[]
+  alerts: Alert[]
+  isConnected: boolean
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error'
+
+  // Actions
+  setNodes: (nodes: TelemetryNode[]) => void
+  updateNode: (id: string, partial: Partial<TelemetryNode>) => void
+  addNode: (node: TelemetryNode) => void
+  removeNode: (id: string) => void
+  setEdges: (edges: TelemetryEdge[]) => void
+  updateEdge: (id: string, partial: Partial<TelemetryEdge>) => void
+  addLog: (log: LogEntry) => void
+  addLogs: (logs: LogEntry[]) => void
+  clearLogs: () => void
+  addEvent: (event: TelemetryEvent) => void
+  addAlert: (alert: Alert) => void
+  acknowledgeAlert: (id: string) => void
+  resolveAlert: (id: string) => void
+  setConnectionStatus: (status: TelemetryStore['connectionStatus']) => void
+}
+
+export const useTelemetryStore = create<TelemetryStore>()(
+  devtools(
+    (set) => ({
+      nodes: [],
+      edges: [],
+      logs: [],
+      events: [],
+      alerts: [],
+      isConnected: false,
+      connectionStatus: 'disconnected',
+
+      setNodes: (nodes) => set({ nodes }),
+      updateNode: (id, partial) =>
+        set((state) => ({
+          nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...partial } : n)),
+        })),
+      addNode: (node) => set((state) => ({ nodes: [...state.nodes, node] })),
+      removeNode: (id) =>
+        set((state) => ({
+          nodes: state.nodes.filter((n) => n.id !== id),
+          edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+        })),
+      setEdges: (edges) => set({ edges }),
+      updateEdge: (id, partial) =>
+        set((state) => ({
+          edges: state.edges.map((e) => (e.id === id ? { ...e, ...partial } : e)),
+        })),
+      addLog: (log) =>
+        set((state) => ({
+          logs: [log, ...state.logs].slice(0, 5000), // Keep last 5000 logs
+        })),
+      addLogs: (logs) =>
+        set((state) => ({
+          logs: [...logs, ...state.logs].slice(0, 5000),
+        })),
+      clearLogs: () => set({ logs: [] }),
+      addEvent: (event) =>
+        set((state) => ({
+          events: [event, ...state.events].slice(0, 1000),
+        })),
+      addAlert: (alert) =>
+        set((state) => ({ alerts: [alert, ...state.alerts] })),
+      acknowledgeAlert: (id) =>
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id
+              ? { ...a, status: 'acknowledged', acknowledgedAt: new Date().toISOString() }
+              : a
+          ),
+        })),
+      resolveAlert: (id) =>
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id
+              ? { ...a, status: 'resolved', resolvedAt: new Date().toISOString() }
+              : a
+          ),
+        })),
+      setConnectionStatus: (status) =>
+        set({ connectionStatus: status, isConnected: status === 'connected' }),
+    }),
+    { name: 'telemetry-store' }
+  )
+)
+
+// ─── App Settings Store ───────────────────────────────────────────────────────
+
+interface AppSettingsStore extends AppSettings {
+  setTheme: (theme: AppSettings['theme']) => void
+  toggleSidebar: () => void
+  toggleInspector: () => void
+  setSelectedNode: (id: string | null) => void
+  toggleAutoScrollLogs: () => void
+  toggleMinimap: () => void
+  toggleAnimations: () => void
+  updateSettings: (partial: Partial<AppSettings>) => void
+}
+
+export const useAppSettingsStore = create<AppSettingsStore>()(
+  devtools(
+    persist(
+      (set) => ({
+        theme: 'system',
+        sidebarCollapsed: false,
+        inspectorOpen: true,
+        selectedNodeId: null,
+        autoScrollLogs: true,
+        showMinimap: false,
+        animationsEnabled: true,
+
+        setTheme: (theme) => set({ theme }),
+        toggleSidebar: () =>
+          set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+        toggleInspector: () =>
+          set((state) => ({ inspectorOpen: !state.inspectorOpen })),
+        setSelectedNode: (id) => set({ selectedNodeId: id, inspectorOpen: !!id }),
+        toggleAutoScrollLogs: () =>
+          set((state) => ({ autoScrollLogs: !state.autoScrollLogs })),
+        toggleMinimap: () =>
+          set((state) => ({ showMinimap: !state.showMinimap })),
+        toggleAnimations: () =>
+          set((state) => ({ animationsEnabled: !state.animationsEnabled })),
+        updateSettings: (partial) => set(partial),
+      }),
+      { name: 'app-settings' }
+    ),
+    { name: 'app-settings-store' }
+  )
+)
+
+// ─── Replay Store ─────────────────────────────────────────────────────────────
+
+interface ReplayStore extends ReplayState {
+  setSession: (session: ReplayState['session']) => void
+  setStatus: (status: ReplayState['status']) => void
+  setCurrentTime: (time: number) => void
+  setSpeed: (speed: number) => void
+  setCurrentFrame: (frame: ReplayState['currentFrame']) => void
+  reset: () => void
+}
+
+export const useReplayStore = create<ReplayStore>()(
+  devtools(
+    (set) => ({
+      status: 'idle',
+      currentTime: 0,
+      speed: 1,
+      session: null,
+      currentFrame: null,
+
+      setSession: (session) => set({ session }),
+      setStatus: (status) => set({ status }),
+      setCurrentTime: (currentTime) => set({ currentTime }),
+      setSpeed: (speed) => set({ speed }),
+      setCurrentFrame: (currentFrame) => set({ currentFrame }),
+      reset: () =>
+        set({
+          status: 'idle',
+          currentTime: 0,
+          speed: 1,
+          session: null,
+          currentFrame: null,
+        }),
+    }),
+    { name: 'replay-store' }
+  )
+)
+
+// ─── Project Store ────────────────────────────────────────────────────────────
+
+interface ProjectStore {
+  projects: Project[]
+  activeProject: Project | null
+  setProjects: (projects: Project[]) => void
+  setActiveProject: (project: Project) => void
+  addProject: (project: Project) => void
+}
+
+export const useProjectStore = create<ProjectStore>()(
+  devtools(
+    persist(
+      (set) => ({
+        projects: [],
+        activeProject: null,
+        setProjects: (projects) => set({ projects }),
+        setActiveProject: (activeProject) => set({ activeProject }),
+        addProject: (project) =>
+          set((state) => ({ projects: [...state.projects, project] })),
+      }),
+      { name: 'project-store' }
+    ),
+    { name: 'project-store' }
+  )
+)
